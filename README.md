@@ -67,12 +67,12 @@ One of the first things you will want to do is isolate your GPU. The goal of thi
 `$ lspci -nn` or better yet `for d in /sys/kernel/iommu_groups/*/devices/*; do n=${d#*/iommu_groups/*}; n=${n%%/*}; printf 'IOMMU Group %s ' "$n"; lspci -nns "${d##*/}"; done;`
 
 and look through the given output until you find your desired GPU, they're **bold** in this case:
-
+```
 IOMMU Group 18 26:00.0 VGA compatible controller [0300]: NVIDIA Corporation TU116 [GeForce GTX 1660 Ti] [**10de:2182**] (rev a1)
 IOMMU Group 18 26:00.1 Audio device [0403]: NVIDIA Corporation Device [**10de:1aeb**] (rev a1)
 IOMMU Group 18 26:00.2 USB controller [0c03]: NVIDIA Corporation Device [**10de:1aec**] (rev a1)
 IOMMU Group 18 26:00.3 Serial bus controller [0c80]: NVIDIA Corporation Device [**10de:1aed**] (rev a1)
-
+```
 
 ### Configuring vfio-pci and Regenerating your Initramfs
 
