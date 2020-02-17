@@ -1,64 +1,50 @@
-# GPU Passthrough from Arch Linux
+# GPU/USB audio interface Passthrough from Manjaro Linux
 
-##### Issues
-
-If you have any issues with these steps please hit me up and I will try to fix them!
-
-
-##### Combines these sources:
+##### Sources:
 
 1. https://wiki.archlinux.org/index.php/PCI_passthrough_via_OVMF
+and discusson: https://wiki.archlinux.org/index.php/Talk:PCI_passthrough_via_OVMF#UEFI_(OVMF)_Compatibility_in_VBIOS
 
 2. https://passthroughpo.st/quick-dirty-arch-passthrough-guide/
 
 3. https://medium.com/@dubistkomisch/gaming-on-arch-linux-and-windows-10-with-vfio-iommu-gpu-passthrough-7c395dde5c2
 
-4. https://pastebin.com/wetAhhVX
+5. https://www.tauceti.blog/post/linux-amd-x570-nvidia-gpu-pci-passthrough-5-looking-glass/ - five part series for amd setup
 
-##### When to do this:
-
-When you want to play windows 10 video games from your arch box because:
-1. wangblows and you have access to a windows 10 iso 
-
-2. you don't want to read mountains of text because you just want to play gaems. 
+6. https://heiko-sieger.info/iommu-groups-what-you-need-to-consider/#How_to_determine_IOMMU_capabilities
 
 ##### Required downloads:
 
-1. a Windows 10 installation iso
-
-**Link**: [here](https://www.microsoft.com/en-us/software-download/windows10ISO)
-
-**Direct Download**:  [here](https://software-download.microsoft.com/pr/Win10_1809Oct_English_x64.iso?t=673fe9a0-8692-49ba-b0e0-e8ca7d314fdc&e=1544486586&h=9bb1b05b0fe6d83b41a5e8780a406244)
-
-2. virtio* drivers for windows10 
+1. virtio* drivers for windows10 
 
 **Link**: [here](https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.160-1/)
-
-**Direct Download**: [here](https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.160-1/virtio-win-0.1.160.iso) 
-
 
 ##### Disclamer:
 
 Most of this stuff is in the archlinux guide at the top, read more of that if any of this is confusing or something terribly goes wrong. This is my rig:
-![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/neofetch.png)
-
 
 ---
 
+## Install second GPU ##
+
+I installed secondary gpu for the host after the OS was configured and had to use mhwd to remove drivers for both GPUs and reinstall them again to make it work. (old Radeon for host and 1660 TI for guests)
 
 ## PCI passthrough via OVMF (GPU)
 
 ### Initialization
 
-1. Make sure that you have already enabled IOMMU via AMD-Vi or Intel Vt-d in your motherboard's BIOS 
-HIT F10 or del or whatever the key is for your motherboard during bios initialization at beginning of startup, enable either VT-d if you have an Intel CPU or AMD-vi if you have an AMD CPU
+1. enable virtualization, set IOMMU to enabled instead of auto
 
-2. edit `/etc/default/grub` and add intel_iommu=on to GRUB_CMDLINE_LINUX_DEFAULT
+2. modify kernel settings to grub `/etc/default/grub`  by adding 
 
-`$ sudo nvim /etc/default/grub`
+amd_iommu=on (technically unnecessary in my case as kernel was recognizing and enabling it by defautl)
+iommu=pt (recommended by arch wiki to optimize performance on some hardware)
+video=efifb:off (kernel was somehow still grabbing the card even though the drivers were showing as virtio and causing the "BAR 3: cannot reserve [mem]" error in dmesg) 
+
+`$ sudo nano /etc/default/grub`
 
 ```
-GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on"
+GRUB_CMDLINE_LINUX_DEFAULT="quiet apparmor=1 security=apparmor udev.log_priority=3 amd_iommu=on iommu=pt video=efifb:off"
 ```
 
 3. re-configure your grub:
@@ -78,41 +64,43 @@ One of the first things you will want to do is isolate your GPU. The goal of thi
 
 1. find the device ID of the GPU that will be passed through by running lscpi
 
-`$ lspci -nn`
+`$ lspci -nn` or better yet `for d in /sys/kernel/iommu_groups/*/devices/*; do n=${d#*/iommu_groups/*}; n=${n%%/*}; printf 'IOMMU Group %s ' "$n"; lspci -nns "${d##*/}"; done;`
 
 and look through the given output until you find your desired GPU, they're **bold** in this case:
 
->01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GM204 [GeForce GTX 980] **[10de:13c0]** (rev a1)
->01:00.1 Audio device [0403]: NVIDIA Corporation GM204 High Definition Audio Controller **[10de:0fbb]** (rev a1)
+IOMMU Group 18 26:00.0 VGA compatible controller [0300]: NVIDIA Corporation TU116 [GeForce GTX 1660 Ti] [**10de:2182**] (rev a1)
+IOMMU Group 18 26:00.1 Audio device [0403]: NVIDIA Corporation Device [**10de:1aeb**] (rev a1)
+IOMMU Group 18 26:00.2 USB controller [0c03]: NVIDIA Corporation Device [**10de:1aec**] (rev a1)
+IOMMU Group 18 26:00.3 Serial bus controller [0c80]: NVIDIA Corporation Device [**10de:1aed**] (rev a1)
 
 
 ### Configuring vfio-pci and Regenerating your Initramfs
 
 Next, we need to instruct vfio-pci to target the device in question through the ID numbers gathered above.
 
-1. edit `/etc/modprobe.d/vfio.conffile` and adding the following line with **your ids from the last step above**:
+1. edit `/etc/modprobe.d/vfio.conf` and adding the following line with **your ids from the last step above**:
 
 ```
-options vfio-pci ids=10de:13c0,10de:0fbb
+options vfio-pci ids=10de:2182,10de:1aeb,10de:1aec,10de:1aed
 ```
 
 Next, we will need to ensure that vfio-pci is loaded before other graphics drivers. 
 
-2. edit `/etc/mkinitcpio.conf`. At the very top of your file you should see a section titled MODULES. Towards the bottom of this section you should see the uncommented line: MODULES= . Add the in the following order before any other drivers (nouveau, radeon, nvidia, etc) which may be listed: vfio vfio_iommu_type1 vfio_pci vfio_virqfd. The line should look like the following:
+2. edit `/etc/mkinitcpio.conf`. At the very top of your file you should see a section titled MODULES. Towards the bottom of this section you should see the uncommented line: MODULES= . Add the in the following order before any other drivers (nouveau, radeon, nvidia, etc but in my case it was empty) which may be listed: vfio vfio_iommu_type1 vfio_pci vfio_virqfd. The line should look like the following:
 
 ```
-MODULES="vfio vfio_iommu_type1 vfio_pci vfio_virqfd nouveau"
+MODULES="vfio_pci vfio vfio_iommu_type1 vfio_virqfd"
 ```
 
-In the same file, also add modconf to the HOOKS line:
+In the same file, also make sure modconf is present in the HOOKS line:
 
 ```
 HOOKS="modconf"
 ```
 
-3. rebuild initramfs.
+3. rebuild initramfs, make sure to specify right kernel verion.
 
-`mkinitcpio -g /boot/linux-custom.img`
+`mkinitcpio -p linux54`
 
 4. reboot
 `$ sudo reboot now`
@@ -155,6 +143,8 @@ Find your GPU and ensure that under “Kernel driver in use:” vfio-pci is disp
 ```
 nvram = ["/usr/share/ovmf/ovmf_code_x64.bin:/usr/share/ovmf/ovmf_vars_x64.bin"]
 ```
+**I ran into this bug:** https://bugs.archlinux.org/task/64175#comment183769
+had to delete the content in /usr/share/qemu/firmware to make it work, fix is available right now in testing branch, need to re-evaluate after the update
 
 3. start and enable both libvirtd and its logger, virtlogd.socket in systemd if you use a different init system, substitute it's commands in for systmectl start
 
@@ -164,9 +154,11 @@ $ sudo systemctl start virtlogd.socket
 $ sudo systemctl enable libvirtd.service
 $ sudo systemctl enable virtlogd.socket
 ```
+enable default network bridge:
+sudo virsh net-start default
+sudo virsh net-autostart default
 
 With libvirt running, and your GPU bound, you are now prepared to open up virt-manager and begin configuring your virtual machine. 
-
 
 ---
 
@@ -191,15 +183,20 @@ With libvirt running, and your GPU bound, you are now prepared to open up virt-m
 
 4. when the VM creation wizard asks you to name your VM (final step before clicking "Finish"), check the "Customize before install" checkbox.
 
-5. in the "Overview" section, set your firmware to "UEFI". If the option is grayed out, make sure that you have correctly specified the location of your firmware in /etc/libvirt/qemu.conf and restart libvirtd.service by running  `sudo systemctl restart libvirtd`
+5. in the "Overview" section, set your chipset to Q35 and firmware to "UEFI". If the option is grayed out, make sure that you have correctly specified the location of your firmware in /etc/libvirt/qemu.conf and restart libvirtd.service by running  `sudo systemctl restart libvirtd`
 
 ![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/uefi.png)
+
+**I ran into this bug:** https://bugs.archlinux.org/task/64175#comment183769
+had to delete the content in /usr/share/qemu/firmware to make it work, fix is available right now in testing branch, need to re-evaluate after the update
 
 6. in the "CPUs" section, change your CPU model to "**host-passthrough**". If it is not in the list, you will have to type it by hand. This will ensure that your CPU is detected properly, since it causes libvirt to expose your CPU capabilities exactly as they are instead of only those it recognizes (which is the preferred default behavior to make CPU behavior easier to reproduce). Without it, some applications may complain about your CPU being of an unknown model.
 ![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/cpu.png)
 
+I also set topology manually but might need to play with it a bit further (1 socket, 2 cores, 2 threads)
 
-7. go into "Add Hardware" and add a Controller for **SCSI** drives of the "VirtIO SCSI" model.
+
+7. go into "Add Hardware" and add a Controller for **SCSI** drives of the "VirtIO SCSI" model. (**didn't do that, selected virtio disk bus directly for my drive in step 8**)
 ![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/virtioscsi.png)
 
 
@@ -207,21 +204,79 @@ With libvirt running, and your GPU bound, you are now prepared to open up virt-m
 ![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/scsi.png)
 
 
-a. windows VMs will not recognize those drives by default, so you need to download the ISO containing the drivers from [here](https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.160-1/virtio-win-0.1.160.iso) and add an **SATA** CD-ROM storage device linking to said ISO, otherwise you will not be able to get Windows to recognize it during the installation process.
+a. windows VMs will not recognize those drives by default, so you need to download the ISO containing the drivers from the link at the top of the page and add an **SATA** CD-ROM storage device linking to said ISO, otherwise you will not be able to get Windows to recognize it during the installation process.
 
 9. make sure there is another **SATA** CD-ROM device that is handling your windows10 iso from the top links.
 ![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/satavirtio.png)
 
-10. setup your GPU, navigate to the “Add Hardware” section and select both the GPU and its sound device that was isolated previously in the **PCI** tab
+10. setup your GPU, navigate to the “Add Hardware” section and select all GPU related devices that were isolated previously in the **PCI** tab
 ![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/gpu.png)
 ![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/gpu-audio.png)
 
-11. lastly, attach your usb keyboard
+11. lastly, attach your usb keyboard and mouse (use a second pair)
 ![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/keyboard.png)
 ![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/mouse.png)
 
 12. don't forget to pass some good RAM as well
 ![alt text](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/pics/ram.png)
+
+13. Enable edit xml in preferences and hide virtualization from nvidia driver using following properties in features section:
+- kvm hidden state
+- vendor_od
+- ioapic 
+
+```xml
+<features>
+    <acpi/>
+    <apic/>
+    <hyperv>
+      <relaxed state="on"/>
+      <vapic state="on"/>
+      <spinlocks state="on" retries="8191"/>
+      <vendor_id state="on" value="2134657890ab"/>
+    </hyperv>
+    <kvm>
+      <hidden state="on"/>
+    </kvm>
+    <vmport state="off"/>
+    <ioapic driver="kvm"/>
+</features>
+```
+14. edit GPU devices to make it a single multifuction device, i.e. same bus slot and enumerated functions:
+```xml
+<hostdev mode="subsystem" type="pci" managed="yes">
+  <source>
+    <address domain="0x0000" bus="0x26" slot="0x00" function="0x0"/>
+  </source>
+  <address type="pci" domain="0x0000" bus="0x06" slot="0x00" function="0x0" multifunction="on"/>
+</hostdev>
+```
+```xml
+<hostdev mode="subsystem" type="pci" managed="yes">
+  <source>
+    <address domain="0x0000" bus="0x26" slot="0x00" function="0x1"/>
+  </source>
+  <address type="pci" domain="0x0000" bus="0x06" slot="0x00" function="0x1"/>
+</hostdev>```
+```xml
+<hostdev mode="subsystem" type="pci" managed="yes">
+  <source>
+    <address domain="0x0000" bus="0x26" slot="0x00" function="0x2"/>
+  </source>
+  <address type="pci" domain="0x0000" bus="0x06" slot="0x00" function="0x2"/>
+</hostdev>
+```
+```xml
+<hostdev mode="subsystem" type="pci" managed="yes">
+  <source>
+    <address domain="0x0000" bus="0x26" slot="0x00" function="0x3"/>
+  </source>
+  <address type="pci" domain="0x0000" bus="0x06" slot="0x00" function="0x3"/>
+</hostdev>
+```
+
+15. I also removed USB redirectors and bunch of sumulated devices such as tablet/video etc. (technically after installing windows as I was troubleshooting GPU passthrough)
+
 
 #### installing windows
 
