@@ -358,3 +358,8 @@ your final grub should look like this:
 
 4. reboot and test it out
 
+### Networking setup
+libvirt: https://jamielinux.com/docs/libvirt-networking-handbook/index.html
+NetworkManager https://wiki.archlinux.org/index.php/NetworkManager
+- removed Ethernet interface from a host in NetworkManager
+- setup bridge and used it to expose VMs on public interface
