@@ -363,3 +363,40 @@ libvirt: https://jamielinux.com/docs/libvirt-networking-handbook/index.html
 NetworkManager https://wiki.archlinux.org/index.php/NetworkManager
 - removed Ethernet interface from a host in NetworkManager
 - setup bridge and used it to expose VMs on public interface
+
+### USB Passthrough
+Ryzen 3rd gen have an issue with the current BIOS (7B85v1B/Release Date 2019-11-13 which includes AMD ComboPI1.0.0.4 Patch B (SMU v46.54)) where FLR flag is set on PCIE devices for Matisse USB hub and Starship/Matisse HD Audio Controllers, but devices themselves do not support resets. When passed through, they lockup the host. See description at https://www.reddit.com/r/VFIO/comments/eba5mh/workaround_patch_for_passing_through_usb_and/
+
+it ultimately required a kernel patch (this is for linux54):
+```diff
+diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
+index 29f473ebf20f..62e0578d3f72 100644
+--- a/drivers/pci/quirks.c
++++ b/drivers/pci/quirks.c
+@@ -5042,6 +5042,10 @@ static void quirk_intel_no_flr(struct pci_dev *dev)
+ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x1502, quirk_intel_no_flr);
+ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x1503, quirk_intel_no_flr);
+ 
++/* FLR causes Ryzen 3000s built-in HD Audio & USB Controllers to hang on VFIO passthrough */
++DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_AMD, 0x149c, quirk_intel_no_flr);
++DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_AMD, 0x1487, quirk_intel_no_flr);
++
+ static void quirk_no_ext_tags(struct pci_dev *pdev)
+ {
+ 	struct pci_host_bridge *bridge = pci_find_host_bridge(pdev->bus);
+```
+
+kernel build process described here: https://forum.manjaro.org/t/how-to-compile-the-mainline-kernel-the-manjaro-way/51700/10
+but ultimately you need to:
+* clone repo https://forum.manjaro.org/t/how-to-compile-the-mainline-kernel-the-manjaro-way/51700/10
+* add patch file to the root of your working directory, where most likely bunch of other manjaro patches will be
+* add your patch to sources, SHA256 and add command for patching to the PKGBUILD:
+```sh
+# TODO: remove if/when AMD deals with it 
+  # https://www.reddit.com/r/VFIO/comments/eba5mh/workaround_patch_for_passing_through_usb_and/
+  patch -Np1 -i "${srcdir}/no_flr.patch"
+```
+* makepkg -s (in my case took ~16-17 minutes to build the kernel)
+* sudo pacman -U linux54-headers-5.4.22-1-x86_64.pkg.tar.xz linux54-5.4.22-1-x86_64.pkg.tar.xz
+
+once you reboot with new kernel, USB controller (0x149c) passthrough worked for me
