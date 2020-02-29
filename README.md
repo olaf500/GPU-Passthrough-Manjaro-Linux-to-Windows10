@@ -400,3 +400,17 @@ but ultimately you need to:
 * sudo pacman -U linux54-headers-5.4.22-1-x86_64.pkg.tar.xz linux54-5.4.22-1-x86_64.pkg.tar.xz
 
 once you reboot with new kernel, USB controller (0x149c) passthrough worked for me
+
+### HiDPI scaling with mixed monitors
+Not related to GPU passthrough thought, just to keep track
+
+XFCE 2x scaling factor is ok for hiDPI monitor but a secondary one everything is too big. Xrandr solves it and arandr makes it easy to generate layout
+```
+#!/bin/sh
+xrandr --output DisplayPort-0 --mode 3840x2160 --pos 0x0 --rotate normal --output HDMI-0 --mode 1920x1080 --pos 3840x0 --rotate normal --scale 2x2 --output DVI-0 --off
+```
+
+If hiDPI is still to big, you can apply fractional scaling with xrandr by adding --scale 1.25x1.25 to that output. When screens change configuration, you might need to reapply it, I didn't find a solution that does it out of the box. I also added it as a startup script in XFCE settings/Sessions and startups/Applicaiton Autostart/
+```
+sh -c "sleep 3 && /home/max/.screenlayout/dual1.sh"
+```
