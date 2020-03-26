@@ -417,3 +417,10 @@ If hiDPI is still too big, you can apply fractional scaling with xrandr by addin
 ```
 sh -c "sleep 3 && /home/max/.screenlayout/dual1.sh"
 ```
+
+### Autosuspend of external audio interface
+An annoying thing that pulse audio was doing. Comment out in /etc/pulse/default.pa
+```
+load-module module-suspend-on-idle
+```
+and restart the service with ```systemctl restart --user pulseaudio```
