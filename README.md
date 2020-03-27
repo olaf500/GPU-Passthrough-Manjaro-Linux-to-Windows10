@@ -424,3 +424,8 @@ An annoying thing that pulse audio was doing. Comment out in /etc/pulse/default.
 load-module module-suspend-on-idle
 ```
 and restart the service with ```systemctl restart --user pulseaudio```
+
+### Set discard option to unmap for VirtIO drivers
+- for SSDs mounted as RAW guest OS should perform the trim (how to verify that?)
+- for qcow2 drives it should release space on deletes
+
