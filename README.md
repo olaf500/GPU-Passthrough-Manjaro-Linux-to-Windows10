@@ -313,7 +313,7 @@ Finally, select the `amd64` architecture
 
 ## Performance Tuning
 
-Check out my [virth xml file](https://github.com/vanities/GPU-Passthrough-Arch-Linux-to-Windows10/blob/master/virsh-win10.xml)
+Check out my [virth xml file](https://github.com/olaf500/GPU-Passthrough-Manjaro-Linux-to-Windows10/blob/master/win10-gpu.xml)
 
 ### CPU pinnging
 
