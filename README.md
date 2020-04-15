@@ -430,9 +430,12 @@ and restart the service with ```systemctl restart --user pulseaudio```
 - for qcow2 drives it should release space on deletes
 
 ### Dual boot with different primary GPUs
-Radeon HD 7750 when I want to passthrough nvidia GPU is fine but a bit unstable and causes occasional crashes (old card, known stability issues with opensource driver). Xorg can recognize nvidia withouth xorg.conf out of the box but fails to start radeon card.
-- custom mkinitcpio file
-- custom grub entry
-- service to change symlink to an appropriate xorg.conf
-- xorg.conf files for nvidia and radeon drivers
+Radeon HD 7750 when I want to passthrough nvidia GPU is fine but a bit unstable and causes occasional crashes (old card, known stability issues with opensource driver). Xorg can recognize nvidia withouth xorg.conf out of the box but fails to start radeon card. General idea is to provide extra kernel parameter in grub entry (XORGCONFIG=radeon/xorg.conf or nvidia/xorg.conf) with relative to /etc/X11 path to a config file, then run service to create a symlink in expected location /etc/X11/xorg.conf so that DM can start X with appropriate config
+- default /etc/[mkinitcpio.conf](mkinitcpio.conf) file
+- custom /etc/[mkinitcpio-nopassthrough.conf](mkinitcpio-nopassthrough.conf) file
+- custom grub entry at /etc/grub.d/[40_custom](40_custom)
+- default grub template properties from /etc/default/[grub](grub)
+- service to change symlink to an appropriate xorg.conf in /etc/systemd/system/[select-gpu.service](select-gpu.service)
+- script executed by the service in /usr/bin/[select-gpu](select-gpu)
+- xorg.conf files for [nvidia](nvidia/xorg.conf) and [radeon](radeon/xorg.conf) drivers placed under /etc/X11
 
