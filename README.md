@@ -431,10 +431,13 @@ and restart the service with ```systemctl restart --user pulseaudio```
 
 ### Dual boot with different primary GPUs
 Radeon HD 7750 when I want to passthrough nvidia GPU is fine but a bit unstable and causes occasional crashes (old card, known stability issues with opensource driver). Xorg can recognize nvidia withouth xorg.conf out of the box but fails to start radeon card. General idea is to provide extra kernel parameter in grub entry (XORGCONFIG=radeon/xorg.conf or nvidia/xorg.conf) with relative to /etc/X11 path to a config file, then run service to read it from /proc/cmdline and create a symlink in expected location /etc/X11/xorg.conf so that DM can start X with appropriate config
-- default /etc/[mkinitcpio.conf](mkinitcpio.conf) file
-- custom /etc/[mkinitcpio-nopassthrough.conf](mkinitcpio-nopassthrough.conf) file
-- custom grub entry at /etc/grub.d/[40_custom](40_custom)
-- default grub template properties from /etc/default/[grub](grub)
+- default /etc/[mkinitcpio.conf](mkinitcpio.conf) file (prioritized vfio modules so they can bind to nvidia GPU) 
+``` mkinitcpio -p linux54```
+- custom /etc/[mkinitcpio-nopassthrough.conf](mkinitcpio-nopassthrough.conf) file (prioritizes nvidia modules so they can bind to GPU before vfio)
+```mkinitcpio -c /etc/mkinitcpio-nopassthrough.conf -g /boot/initramfs-5.4-nopassthrough.img```
+- custom grub entry at /etc/grub.d/[40_custom](40_custom) for boot with NVidea gpu
+- default grub template properties from /etc/default/[grub](grub) for boot with Radeon (nvidia is passed through)
+- don't forget to ```update-grub```
 - service to change symlink to an appropriate xorg.conf in /etc/systemd/system/[select-gpu.service](select-gpu.service)
 - script executed by the service in /usr/bin/[select-gpu.sh](select-gpu.sh) (parsing examples from [stack overflow]( https://stackoverflow.com/questions/918886/how-do-i-split-a-string-on-a-delimiter-in-bash) )
 - xorg.conf files for [nvidia](nvidia/xorg.conf) and [radeon](radeon/xorg.conf) drivers placed under /etc/X11
