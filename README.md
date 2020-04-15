@@ -435,6 +435,7 @@ Radeon HD 7750 when I want to passthrough nvidia GPU is fine but a bit unstable 
 ``` mkinitcpio -p linux54```
 - custom /etc/[mkinitcpio-nopassthrough.conf](mkinitcpio-nopassthrough.conf) file (prioritizes nvidia modules so they can bind to GPU before vfio)
 ```mkinitcpio -c /etc/mkinitcpio-nopassthrough.conf -g /boot/initramfs-5.4-nopassthrough.img```
+- do I need a hook to rebuild anything when I update kernel?
 - custom grub entry at /etc/grub.d/[40_custom](40_custom) for boot with NVidea gpu
 - default grub template properties from /etc/default/[grub](grub) for boot with Radeon (nvidia is passed through)
 - don't forget to ```update-grub```
