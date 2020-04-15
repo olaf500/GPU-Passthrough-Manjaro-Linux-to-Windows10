@@ -429,3 +429,10 @@ and restart the service with ```systemctl restart --user pulseaudio```
 - for SSDs mounted as RAW guest OS should perform the trim (how to verify that? https://askubuntu.com/questions/464306/a-command-which-checks-that-trim-is-working)
 - for qcow2 drives it should release space on deletes
 
+### Dual boot with different primary GPUs
+Radeon HD 7750 when I want to passthrough nvidia GPU is fine but a bit unstable and causes occasional crashes (old card, known stability issues with opensource driver). Xorg can recognize nvidia withouth xorg.conf out of the box but fails to start radeon card.
+- custom mkinitcpio file
+- custom grub entry
+- service to change symlink to an appropriate xorg.conf
+- xorg.conf files for nvidia and radeon drivers
+
