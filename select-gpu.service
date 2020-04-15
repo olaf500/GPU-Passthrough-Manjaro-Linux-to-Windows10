@@ -1,0 +1,10 @@
+[Unit]
+Description=updates xorg.conf file based on XORGCONFIG env variable set in grub
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/select-gpu.sh
+
+[Install]
+WantedBy=multi-user.target
