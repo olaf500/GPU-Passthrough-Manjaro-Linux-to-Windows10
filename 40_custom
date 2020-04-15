@@ -1,0 +1,21 @@
+#!/bin/sh
+exec tail -n +3 $0
+# This file provides an easy way to add custom menu entries.  Simply type the
+# menu entries you want to add after this comment.  Be careful not to change
+# the 'exec tail' line above.
+
+menuentry 'Manjaro Linux (no GPU passthrough)' {
+    savedefault
+    load_video
+    set gfxpayload=keep
+    insmod gzio
+    insmod part_gpt
+    insmod ext2
+#    if [ x$feature_platform_search_hint = xy ]; then
+#      search --no-floppy --fs-uuid --set=root  d00675f7-9b76-419f-91bb-73a53d30e883
+#    else
+#      search --no-floppy --fs-uuid --set=root d00675f7-9b76-419f-91bb-73a53d30e883
+#    fi
+    linux   /boot/vmlinuz-5.4-x86_64 root=UUID=d00675f7-9b76-419f-91bb-73a53d30e883 rw  quiet apparmor=1 idle=nomwait security=apparmor  udev.log_priority=3 amd_iommu=on iommu=pt nvidia-drm.modeset=1 module_blacklist=radeon XORGCONFIG=xorg.conf.nvidia
+    initrd  /boot/amd-ucode.img /boot/initramfs-5.4-nopassthrough.img
+}
