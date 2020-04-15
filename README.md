@@ -436,6 +436,6 @@ Radeon HD 7750 when I want to passthrough nvidia GPU is fine but a bit unstable 
 - custom grub entry at /etc/grub.d/[40_custom](40_custom)
 - default grub template properties from /etc/default/[grub](grub)
 - service to change symlink to an appropriate xorg.conf in /etc/systemd/system/[select-gpu.service](select-gpu.service)
-- script executed by the service in /usr/bin/[select-gpu](select-gpu)
+- script executed by the service in /usr/bin/[select-gpu.sh](select-gpu.sh)
 - xorg.conf files for [nvidia](nvidia/xorg.conf) and [radeon](radeon/xorg.conf) drivers placed under /etc/X11
 
