@@ -364,7 +364,7 @@ NetworkManager https://wiki.archlinux.org/index.php/NetworkManager
 - removed Ethernet interface from a host in NetworkManager
 - setup bridge and used it to expose VMs on public interface
 
-### USB Passthrough
+### -USB Passthrough- - fix was introduced in 5.8 kernel and backported to manjaro's 5.4 build
 Ryzen 3rd gen have an issue with the current BIOS (7B85v1B/Release Date 2019-11-13 which includes AMD ComboPI1.0.0.4 Patch B (SMU v46.54)) where FLR flag is set on PCIE devices for Matisse USB hub and Starship/Matisse HD Audio Controllers, but devices themselves do not support resets. When passed through, they lockup the host. See description at https://www.reddit.com/r/VFIO/comments/eba5mh/workaround_patch_for_passing_through_usb_and/
 
 it ultimately required a kernel patch (this is for linux54):
