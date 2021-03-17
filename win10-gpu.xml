@@ -40,8 +40,9 @@
     <vmport state='off'/>
     <ioapic driver='kvm'/>
   </features>
-  <cpu mode='host-passthrough' check='partial'>
+  <cpu mode='host-passthrough' check='partial' migratable='on'>
     <topology sockets='1' cores='3' threads='2'/>
+    <feature policy="disable" name="amd-stibp"/>
   </cpu>
   <clock offset='localtime'>
     <timer name='rtc' tickpolicy='catchup'/>
